@@ -1,6 +1,6 @@
 # SubSync
 
-SubSync can automatically resync subtitles to a video-file by using a reference video and the corresponding subtitle-file.
+SubSync can automatically resync subtitles to a video-file by using the audio-track of a reference video and the corresponding subtitle-file.
 
 # Usage
 To run SubSync the following files must be present in the 'Tools' directory:
