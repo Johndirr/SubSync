@@ -13,6 +13,7 @@ Both files are components of the FFmpeg multimedia framework. Download FFmpeg fo
 2. Select the reference video by pressing 'Open reference video...' (A command line window will pop up - this is ffmpeg converting or copying the audio track from the video file. If an audio track already exists you will be asked to overwrite it (enter 'y' or 'n' and press enter)
 3. Select the reference subtitle by pressing 'Open reference subtitle...'
 4. Press Synchronize to start the fingerprinting and matching process.
+5. After snychronizing the resulting subtitles will be saved into the same folder as the reference subtitle-file with the text '_sync' added to the name. E.g. 'The_Godfather_sync.srt'
 
 IMPORTANT: Of course the reference audio and reference subtitles must be in sync to each other.
 
