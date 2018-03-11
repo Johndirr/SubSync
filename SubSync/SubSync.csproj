@@ -52,28 +52,26 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="Aurio, Version=1.0.6434.19506, Culture=neutral, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\..\..\..\..\Source\Aurio-master\Aurio\Aurio\bin\Debug\Aurio.dll</HintPath>
+    <Reference Include="Aurio">
+      <HintPath>..\..\..\..\..\..\..\VS_Dependencies\Aurio.dll</HintPath>
     </Reference>
-    <Reference Include="Aurio.FFmpeg, Version=1.0.6434.19506, Culture=neutral, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\..\..\..\..\Source\Aurio-master\Aurio\Aurio\bin\Debug\Aurio.FFmpeg.dll</HintPath>
+    <Reference Include="Aurio.FFmpeg">
+      <HintPath>..\..\..\..\..\..\..\VS_Dependencies\Aurio.FFmpeg.dll</HintPath>
     </Reference>
-    <Reference Include="Aurio.PFFFT, Version=1.0.6434.19505, Culture=neutral, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\..\..\..\..\Source\Aurio-master\Aurio\Aurio\bin\Debug\Aurio.PFFFT.dll</HintPath>
+    <Reference Include="Aurio.PFFFT">
+      <HintPath>..\..\..\..\..\..\..\VS_Dependencies\Aurio.PFFFT.dll</HintPath>
     </Reference>
-    <Reference Include="Aurio.Soxr, Version=1.0.6434.19505, Culture=neutral, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\..\..\..\..\Source\Aurio-master\Aurio\Aurio\bin\Debug\Aurio.Soxr.dll</HintPath>
+    <Reference Include="Aurio.Soxr">
+      <HintPath>..\..\..\..\..\..\..\VS_Dependencies\Aurio.Soxr.dll</HintPath>
     </Reference>
     <Reference Include="libse">
       <HintPath>..\..\..\..\..\Source\Repos\AudioSub\Aurio\Aurio\Aurio.Test.FingerprintingHaitsmaKalker2002\subeditdll\libse.dll</HintPath>
     </Reference>
-    <Reference Include="NAudio, Version=1.7.3.0, Culture=neutral, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\..\..\..\..\Source\Aurio-master\Aurio\Aurio\bin\Debug\NAudio.dll</HintPath>
+    <Reference Include="NAudio">
+      <HintPath>..\..\..\..\..\..\..\VS_Dependencies\NAudio.dll</HintPath>
+    </Reference>
+    <Reference Include="SQLite_Net">
+      <HintPath>..\..\..\..\..\..\..\VS_Dependencies\SQLite_Net.dll</HintPath>
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Data" />

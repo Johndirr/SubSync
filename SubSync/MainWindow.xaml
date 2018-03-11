@@ -15,11 +15,11 @@
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
         <Button x:Name="OpenFile1" Content="Open video..." HorizontalAlignment="Left" Margin="10,10,0,0" VerticalAlignment="Top" Width="140" Click="OpenFile1_Click" Height="20"/>
-        <Button x:Name="OpenFile2" Content="Open reference video..." HorizontalAlignment="Left" Margin="10,10,0,0" Grid.Row="1" VerticalAlignment="Top" Click="OpenFile2_Click" Height="20" Width="140"/>
-        <TextBox x:Name="File1" Height="20" Margin="155,10,10,0" TextWrapping="Wrap" VerticalAlignment="Top" IsEnabled="False"/>
-        <TextBox x:Name="File2" Height="20" Margin="155,10,10,0" Grid.Row="1" TextWrapping="Wrap" VerticalAlignment="Top" IsEnabled="False"/>
+        <Button x:Name="OpenReferenceFile" Content="Open reference video..." HorizontalAlignment="Left" Margin="10,10,0,0" Grid.Row="1" VerticalAlignment="Top" Click="OpenFile2_Click" Height="20" Width="140"/>
+        <TextBox x:Name="VideoToSyncFilePath" Height="20" Margin="155,10,10,0" TextWrapping="Wrap" VerticalAlignment="Top" IsEnabled="False"/>
+        <TextBox x:Name="ReferenceFilePath" Height="20" Margin="155,10,10,0" Grid.Row="1" TextWrapping="Wrap" VerticalAlignment="Top" IsEnabled="False"/>
         <Button x:Name="OpenSubtitle" Content="Open reference subtitle..." HorizontalAlignment="Left" Margin="10,10,0,0" Grid.Row="2" VerticalAlignment="Top" Click="OpenSubtitle_Click" Height="20" Width="140"/>
-        <TextBox x:Name="subtitlepath" Height="20" Margin="155,10,10,0" Grid.Row="2" TextWrapping="Wrap" VerticalAlignment="Top" IsEnabled="False"/>
+        <TextBox x:Name="SubtitlePath" Height="20" Margin="155,10,10,0" Grid.Row="2" TextWrapping="Wrap" VerticalAlignment="Top" IsEnabled="False"/>
         <DataGrid Name="SubtitleGrid" SelectionUnit="FullRow" AutoGenerateColumns="False" HeadersVisibility="Column" CanUserAddRows="False" Margin="10,10,10,0" Grid.Row="3">
             <DataGrid.Columns>
                 <DataGridTextColumn Header="Number" Width="Auto" Binding="{Binding Number}" IsReadOnly="True" CanUserSort="False"/>

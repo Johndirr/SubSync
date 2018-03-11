@@ -24,6 +24,8 @@ using NAudio.Wave;
 using Nikse.SubtitleEdit.Core;
 using System.IO;
 
+using System.Runtime.Serialization.Formatters.Binary;
+
 namespace SubSync
 {
     /// <summary>
@@ -33,8 +35,6 @@ namespace SubSync
     {
         private FingerprintStore store;
         private Profile profile;
-        private string ffmpegpath = System.AppDomain.CurrentDomain.BaseDirectory + "Tools\\ffmpeg.exe";
-        private string ffprobepath = System.AppDomain.CurrentDomain.BaseDirectory + "Tools\\ffprobe.exe";
 
         public MainWindow()
         {
@@ -50,7 +50,7 @@ namespace SubSync
 
             if (dlg.ShowDialog() == true)
             {
-                File1.Text = extractAudio(dlg.FileName);
+                VideoToSyncFilePath.Text = dlg.FileName;
             }
         }
 
@@ -63,7 +63,7 @@ namespace SubSync
 
             if (dlg.ShowDialog() == true)
             {
-                File2.Text = extractAudio(dlg.FileName);
+                ReferenceFilePath.Text = dlg.FileName;
             }
         }
 
@@ -76,7 +76,7 @@ namespace SubSync
 
             if (dlg.ShowDialog() == true)
             {
-                subtitlepath.Text = dlg.FileName;
+                SubtitlePath.Text = dlg.FileName;
 
                 Subtitle subtitle = new Subtitle();
                 Encoding encoding;
@@ -85,179 +85,204 @@ namespace SubSync
             }
         }
 
-        public string getAudioExtension(string filepath)
+        public TimeSpan TruncateTimespan(TimeSpan Timespan)
         {
-            string output;
-            string ffprobecommand;
+            TimeSpan t1 = Timespan;
 
-            ffprobecommand = "-v error -select_streams a:0 -show_entries stream=codec_name -of default=nokey=1:noprint_wrappers=1" + " \"" + filepath + "\"";
+            int precision = 2; // Specify how many digits past the decimal point
+            const int TIMESPAN_SIZE = 7; // it always has seven digits
+                                         // convert the digitsToShow into a rounding/truncating mask
+            int factor = (int)Math.Pow(10, (TIMESPAN_SIZE - precision));
 
-            ProcessStartInfo processffmpegStartInfo = new ProcessStartInfo(ffprobepath, ffprobecommand);
-            processffmpegStartInfo.RedirectStandardOutput = true;
-            processffmpegStartInfo.RedirectStandardError = true;
-            processffmpegStartInfo.RedirectStandardInput = true;
-            processffmpegStartInfo.UseShellExecute = false;
-            processffmpegStartInfo.CreateNoWindow = true;
-
-            Process process = Process.Start(processffmpegStartInfo);
-            using (StreamReader streamReader = process.StandardOutput)
-            {
-                output = streamReader.ReadToEnd();
-            }
-            return output = Regex.Replace(output, @"\t|\n|\r", ""); ;
+            TimeSpan truncatedTimeSpan = new TimeSpan(t1.Ticks - (t1.Ticks % factor));
+            return truncatedTimeSpan;
         }
 
-        public string extractAudio(string filepath)
+        public TimeSpan RoundTimespan(TimeSpan Timespan)
         {
-            string ffmpegcommand;
-            string AudioExtension = getAudioExtension(filepath);
+            TimeSpan t1 = Timespan;
 
-            if (AudioExtension == "mp3")
-            {
-                //just copy the audio
-                ffmpegcommand = "-i " + " \"" + filepath + "\"" + " -vn -acodec copy " + "\"" + filepath.Substring(0, filepath.Length - 3) + AudioExtension + "\"";
-            }
-            else
-            {
-                //reencode to mp3
-                AudioExtension = "mp3";
-                ffmpegcommand = "-i " + " \"" + filepath + "\"" + " -vn " + "\"" + filepath.Substring(0, filepath.Length - 3) + AudioExtension + "\"";
-            }
+            int precision = 2; // Specify how many digits past the decimal point
+            const int TIMESPAN_SIZE = 7; // it always has seven digits
+                                         // convert the digitsToShow into a rounding/truncating mask
+            int factor = (int)Math.Pow(10, (TIMESPAN_SIZE - precision));
 
-            /*
-            if (AudioExtension != "aac")
-            {
-                ffmpegcommand = "-i " + " \"" + filepath + "\"" + " -vn -acodec copy " + "\"" + filepath.Substring(0, filepath.Length - 3) + AudioExtension + "\"";
-            }
-            else
-            {
-                //reencode to mp3
-                AudioExtension = "mp3";
-                ffmpegcommand = "-i " + " \"" + filepath + "\"" + " -vn " + "\"" + filepath.Substring(0, filepath.Length - 3) + AudioExtension + "\"";
-            }
-            */
-            Process AudioExtraction = Process.Start(ffmpegpath, ffmpegcommand);
-            AudioExtraction.WaitForExit();
-            return filepath.Substring(0, filepath.Length - 3) + AudioExtension;
+            TimeSpan roundedTimeSpan = new TimeSpan(((long)Math.Round((1.0 * t1.Ticks / factor)) * factor));
+            return roundedTimeSpan;
         }
 
-        public void findmatches()
+        private static readonly TimeSpan GapSize = TimeSpan.FromSeconds(3);
+
+        public static IEnumerable<IEnumerable<TimeSpan>> GetGroups(IEnumerable<TimeSpan> timespans)
         {
-            int matchcount = store.FindAllMatches().Count;
-            if (matchcount > 0)
+            var timespansList = timespans.ToList();
+            while (timespansList.Count > 0)
             {
-
-                //MessageBox.Show(matchcount.ToString() + " matches found.", "Fingerprinting and Matching", MessageBoxButton.OK, MessageBoxImage.Information);
-
-                List<Aurio.Matching.Match> matches = store.FindAllMatches();
-
-                //--
-                //TimeSpan lastoffset = new TimeSpan();
-                List<String> listoff = new List<String>();
-                List<int> listnooff = new List<int>();
-                Subtitle subtitle = new Subtitle();
-                Subtitle subtitleNoMatches = new Subtitle();
-                Encoding encoding;
-                var format = subtitle.LoadSubtitle(subtitlepath.Text, out encoding, null);
-                var Filename2 = System.IO.Path.GetFileName(File2.Text);
-                //look for a match for each subtitle line and add the offset to a list
-                for (int i = 0; i < subtitle.Paragraphs.Count; i++)
+                TimeSpan min = timespansList.Min();
+                var closeList = timespansList.Where(x => x - min <= GapSize).ToList();
+                yield return closeList;
+                foreach (var timeSpan in closeList)
                 {
-                    //fill a list for every line/offset and insert an offset later on if a match is found
-                    listoff.Add("Line " + i.ToString() + " No offset");
-                    for (int y = 0; y < matches.Count; y++)
-                    {
-                        if ((matches[y].Track1.Name == Filename2 && matches[y].Track1Time > subtitle.Paragraphs[i].StartTime.TimeSpan && matches[y].Track1Time < subtitle.Paragraphs[i].EndTime.TimeSpan) ||
-                           (matches[y].Track2.Name == Filename2 && matches[y].Track2Time > subtitle.Paragraphs[i].StartTime.TimeSpan && matches[y].Track2Time < subtitle.Paragraphs[i].EndTime.TimeSpan))
-                        {
-                            //(make the offset negative if the files in the matches are in another order than choosen under File1 and File2)
-                            if (Filename2.Contains(matches[y].Track1.Name))
-                            {
-                                listoff[i] = "Line " + i.ToString() + " Offset: " + matches[y].Offset.Negate().ToString();
-                                //shift subtitleline by offset
-                                subtitle.Paragraphs[i].Adjust(1, matches[y].Offset.Negate().TotalSeconds);
-                            }
-                            else
-                            {
-                                listoff[i] = "Line " + i.ToString() + " Offset: " + matches[y].Offset.ToString();
-                                //shift subtitleline by offset
-                                subtitle.Paragraphs[i].Adjust(1, matches[y].Offset.TotalSeconds);
-                            }
-                            //adjust time to 0:00:00.000 if adjusting resulted in a negative timestamp
-                            if (subtitle.Paragraphs[i].StartTime.TotalSeconds < 0)
-                            {
-                                subtitle.Paragraphs[i].StartTime.TotalSeconds = 0;
-                                subtitle.Paragraphs[i].EndTime = subtitle.Paragraphs[i].Duration; //only the time from 0 to the endtime will is counted as the duration
-                            }
-                            break;
-                        }
-                    }
-                    //make a list with the lines for which no match was found 
-                    if (listoff[i] == ("Line " + i.ToString() + " No offset"))
-                    {
-                        listnooff.Add(i);
-                    }
+                    timespansList.Remove(timeSpan);
                 }
+            }
+        }
 
-                if (listnooff.Count == 0)
+        public class SimpleMatch
+        {
+            public TimeSpan Offset { get; set;  }
+            public AudioTrack Track1 { get; set; }
+            public TimeSpan Track1Time { get; set; }
+            public AudioTrack Track2 { get; set; }
+            public TimeSpan Track2Time { get; set; }
+        }
+
+        public class MultipleMatch
+        {
+            public TimeSpan Starttime { get; set; }
+            public int Linenumber { get; set; }
+        }
+
+        public void findmatches() //for testing
+        {
+            var VideoToSyncFileName = System.IO.Path.GetFileName(VideoToSyncFilePath.Text);
+            var ReferenceFileName = System.IO.Path.GetFileName(ReferenceFilePath.Text);
+
+            List<Aurio.Matching.Match> matches = store.FindAllMatches();
+            List<SimpleMatch> simplematches = new List<SimpleMatch>();
+
+            //sort matches so that Track1.Name is always ReferenceFileName. save to SimpleMatchList
+            foreach (var match in matches)
+            {
+                if(match.Track1.Name != ReferenceFileName)
                 {
-                    MessageBox.Show(listoff.Count.ToString() + " lines were adjusted.\n" + listnooff.Count.ToString() + " lines had no matching audiofingerprint.", "Fingerprinting and Matching", MessageBoxButton.OK, MessageBoxImage.Information);
+                    //swap Track1 and Track2
+                    simplematches.Add(new SimpleMatch { Offset = match.Offset, Track1 = match.Track2, Track1Time = match.Track2Time, Track2 = match.Track1, Track2Time = match.Track1Time });
+                    //simplematches.Add(new SimpleMatch { Offset = match.Offset.Negate(), Track1 = match.Track2, Track1Time = match.Track2Time, Track2 = match.Track1, Track2Time = match.Track1Time });
                 }
                 else
                 {
-                    if (MessageBox.Show(listoff.Count.ToString() + " lines were adjusted.\n" + listnooff.Count.ToString() + " lines had no matching audiofingerprint.\n\nDo you want to delete the missing lines?", "Delete missing lines?", MessageBoxButton.YesNo, MessageBoxImage.Warning) == MessageBoxResult.No)
-                    {
-                        //no...
-                        //delete all lines with no match from the listoff-list only
-                        for (int i = listnooff.Count - 1; i >= 0; i--)
-                        {
-                            subtitleNoMatches.InsertParagraphInCorrectTimeOrder(subtitle.Paragraphs[listnooff[i]]);
-                            listoff.RemoveAt(listnooff[i]);
-                        }
-                    }
-                    else
-                    {
-                        //yes...
-                        //delete all lines with no match from the subtitle and from the listoff-list
-                        for (int i = listnooff.Count - 1; i >= 0; i--)
-                        {
-                            //save the deleted lines to a seperate subtitle file
-                            subtitleNoMatches.InsertParagraphInCorrectTimeOrder(subtitle.Paragraphs[listnooff[i]]);
-                            subtitle.Paragraphs.RemoveAt(listnooff[i]);
-                            listoff.RemoveAt(listnooff[i]);
-                        }
-                    }
-                    //save the nomatches subs
-                    string allText2 = subtitleNoMatches.ToText(format);
-                    TextWriter file2 = new StreamWriter(subtitlepath.Text.Insert(subtitlepath.Text.Length - 4, "_no_match"), false, encoding);
-                    file2.Write(allText2);
-                    file2.Close();
+                    //just copy to simplematches list
+                    simplematches.Add(new SimpleMatch { Offset = match.Offset.Negate(), Track1 = match.Track1, Track1Time = match.Track1Time, Track2 = match.Track2, Track2Time = match.Track2Time });
+                    //simplematches.Add(new SimpleMatch { Offset = match.Offset, Track1 = match.Track1, Track1Time = match.Track1Time, Track2 = match.Track2, Track2Time = match.Track2Time });
                 }
-
-                //save the corrected subs
-                subtitle.Renumber(1);
-                string allText = subtitle.ToText(format);
-                TextWriter file = new StreamWriter(subtitlepath.Text.Insert(subtitlepath.Text.Length - 4, "_sync"), false, encoding);
-                file.Write(allText);
-                file.Close();
-
-                //reload the subtitle for displaying
-                SubtitleGrid.ItemsSource = subtitle.Paragraphs;  
             }
-            else
+
+            Subtitle subtitle = new Subtitle();
+            Encoding encoding;
+            var format = subtitle.LoadSubtitle(SubtitlePath.Text, out encoding, null);
+
+            List<int> nomatch = new List<int>();
+            List<MultipleMatch> multiplematch = new List<MultipleMatch>();
+
+            for (int i = 0; i < subtitle.Paragraphs.Count; i++)
             {
-                MessageBox.Show("No matches found.", "Fingerprinting and Matching", MessageBoxButton.OK, MessageBoxImage.Information);
+                //find all matches for a subtitleparagraph
+                var submatches = simplematches.Where(y => y.Track1Time > subtitle.Paragraphs[i].StartTime.TimeSpan && y.Track1Time < subtitle.Paragraphs[i].EndTime.TimeSpan);
+                
+                //if matches were found
+                if (submatches.Count() > 0)
+                {
+                    //round timespans of the found submatches
+                    foreach (var offset in submatches)
+                    {
+                        offset.Offset = RoundTimespan(offset.Offset);
+                    }
+                    //group submatches by offset
+                    var groupedsubmatches = GetGroups(submatches.Select(x => x.Offset).ToList());
+                    List<TimeSpan> groupedsubmatches_avarage = new List<TimeSpan>();
+                    foreach (var group in groupedsubmatches)
+                    {
+                        groupedsubmatches_avarage.Add(TimeSpan.FromMilliseconds(group.Average(a => a.TotalMilliseconds)));
+                    }
+
+                    //adjust subtitle by using the offset that is nearest to the original subtitleparagraph if there is more than one offset
+                    if (groupedsubmatches_avarage.Count > 1)
+                    {
+                        var closestToSubtitleTime = groupedsubmatches_avarage.OrderBy(t => Math.Abs((t - subtitle.Paragraphs[i].StartTime.TimeSpan).Ticks)).First();
+
+                        //save the other(s) offsets to multiplematch-list
+                        groupedsubmatches_avarage.Remove(closestToSubtitleTime);
+                        foreach (var element in groupedsubmatches_avarage)
+                        {
+                            multiplematch.Add(new MultipleMatch { Starttime = subtitle.Paragraphs[i].StartTime.TimeSpan + element, Linenumber = i });
+                        }
+                        subtitle.Paragraphs[i].Adjust(1, closestToSubtitleTime.TotalSeconds);
+                    }
+                    else //take first offset otherwise
+                    {
+                        subtitle.Paragraphs[i].Adjust(1, groupedsubmatches_avarage[0].TotalSeconds);
+                    }
+
+                    //adjust time to 0:00:00.000 if adjusting resulted in a negative timestamp
+                    if (subtitle.Paragraphs[i].StartTime.TotalSeconds < 0)
+                    {
+                        var TempDuration = subtitle.Paragraphs[i].Duration.TotalSeconds;
+                        subtitle.Paragraphs[i].StartTime.TotalSeconds = 0;
+                        subtitle.Paragraphs[i].EndTime.TotalSeconds = TempDuration;
+                        //check for negative duration ???
+                    }
+                }
+                else //no match found
+                {
+                    //add linenumber to nomatch-list
+                    nomatch.Add(i);
+                }
             }
+
+            subtitle.Sort(Nikse.SubtitleEdit.Core.Enums.SubtitleSortCriteria.StartTime);
+
+            //create new subtitlepargraphs if there are matches in multiplematch that werent used
+            foreach (var m in multiplematch)
+            {
+                //multiplematch contains the linenumber for wich multiple matches exist and the starttimes for the lines
+                
+                //check if there is no subtitle at the new position
+                var addParagraph = new Nikse.SubtitleEdit.Core.Paragraph(subtitle.Paragraphs[m.Linenumber], false);
+                var tempspan = addParagraph.Duration.TimeSpan;
+                addParagraph.StartTime.TimeSpan = m.Starttime;
+                addParagraph.EndTime.TimeSpan = addParagraph.StartTime.TimeSpan + tempspan;
+
+                bool insertsub = true;
+                foreach (var sp in subtitle.Paragraphs)
+                {
+                    //check if there already is a paragraph in the subtitle that has the same timefram as multiplematch paragraph
+                    if((addParagraph.StartTime.TotalMilliseconds >= sp.StartTime.TotalMilliseconds && addParagraph.StartTime.TotalMilliseconds < sp.EndTime.TotalMilliseconds) || (addParagraph.EndTime.TotalMilliseconds > sp.StartTime.TotalMilliseconds && addParagraph.EndTime.TotalMilliseconds <= sp.EndTime.TotalMilliseconds))
+                    {
+                        //DONT copy multiplematch paragraph into existing subtitle
+                        //There already is a subtitlepagraph at this position
+                        insertsub = false;
+                    }
+                }
+                if(insertsub == true)
+                {
+                    //copy multiplematch paragraph into original subtitle
+                    subtitle.InsertParagraphInCorrectTimeOrder(addParagraph);
+                    //MessageBox.Show("added extra subtitle");
+                }
+            }
+
+
+            var testit = 1337;
+            //save the corrected subs
+            subtitle.Renumber(1);
+            string allText = subtitle.ToText(format);
+            TextWriter file = new StreamWriter(SubtitlePath.Text.Insert(SubtitlePath.Text.Length - 4, "_sync"), false, encoding);
+            file.Write(allText);
+            file.Close();
+
+            //reload the subtitle for displaying
+            SubtitleGrid.ItemsSource = subtitle.Paragraphs;
         }
 
         private void Synchronize_Click(object sender, RoutedEventArgs e)
         {
-            if (File1.Text.Length != 0 && File2.Text.Length != 0 && subtitlepath.Text.Length != 0)
+            if (VideoToSyncFilePath.Text.Length != 0 && ReferenceFilePath.Text.Length != 0 && SubtitlePath.Text.Length != 0)
             {
                 //dissable button while processing
                 Synchronize.IsEnabled = false;
 
-                string[] FileNames = new string[] { File1.Text, File2.Text };
+                string[] FileNames = new string[] { VideoToSyncFilePath.Text, ReferenceFilePath.Text };
 
                 profile = FingerprintGenerator.GetProfiles()[0];
                 store = new FingerprintStore(profile);
