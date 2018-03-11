@@ -18,4 +18,5 @@ SubSync uses the following programs and libraries:
 # Known bugs / To Do
 - Remove ffproxy.wav after completion
 - Save lines for which no match was found to another subtitle before deleting them
+- Copy lines for which more than one match was found even though the other matches aren't in the original video
 - Start processing the subtitles in an extra process
