@@ -1,5 +1,4 @@
 # SubSync
-
 SubSync can automatically resync subtitles to a video-file by using the audio-track of a reference video and the corresponding subtitle-file.
 
 # Usage
@@ -19,9 +18,11 @@ IMPORTANT: Of course the reference audio and reference subtitles must be in sync
 
 
 # Dependencies / References
-
 SubSync uses the following programs and libraries:
 - https://github.com/protyposis/Aurio for audio fingerprinting and matching
 - https://github.com/SubtitleEdit/subtitleedit libse for loading and editing subtitles
 
 
+# Known bugs
+- If there are two matches for a subtitleline in one audiotrack always the first match will be used
+- ass subtitles are not saved with their original formating intact
