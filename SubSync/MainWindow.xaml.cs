@@ -23,6 +23,7 @@ using Aurio.TaskMonitor;
 using NAudio.Wave;
 using Nikse.SubtitleEdit.Core;
 using System.IO;
+using System.ComponentModel;
 
 using System.Runtime.Serialization.Formatters.Binary;
 
@@ -35,6 +36,7 @@ namespace SubSync
     {
         private FingerprintStore store;
         private Profile profile;
+
 
         public MainWindow()
         {
@@ -72,7 +74,7 @@ namespace SubSync
             Microsoft.Win32.OpenFileDialog dlg = new Microsoft.Win32.OpenFileDialog();
             dlg.DefaultExt = ".srt";
             dlg.Multiselect = false;
-            dlg.Filter = "srt|*.srt|ass|*.ass";
+            dlg.Filter = "srt| *.srt; *.ass|All| *.*";
 
             if (dlg.ShowDialog() == true)
             {
@@ -230,8 +232,10 @@ namespace SubSync
                 }
             }
 
-            subtitle.Sort(Nikse.SubtitleEdit.Core.Enums.SubtitleSortCriteria.StartTime);
+            //subtitle.Sort(Nikse.SubtitleEdit.Core.Enums.SubtitleSortCriteria.StartTime);
 
+            //TODO: Kopieren von matches, die öfter als einmal gefunden wurden
+            /*
             //create new subtitlepargraphs if there are matches in multiplematch that werent used
             foreach (var m in multiplematch)
             {
@@ -247,7 +251,7 @@ namespace SubSync
                 foreach (var sp in subtitle.Paragraphs)
                 {
                     //check if there already is a paragraph in the subtitle that has the same timefram as multiplematch paragraph
-                    if((addParagraph.StartTime.TotalMilliseconds >= sp.StartTime.TotalMilliseconds && addParagraph.StartTime.TotalMilliseconds < sp.EndTime.TotalMilliseconds) || (addParagraph.EndTime.TotalMilliseconds > sp.StartTime.TotalMilliseconds && addParagraph.EndTime.TotalMilliseconds <= sp.EndTime.TotalMilliseconds))
+                    if((addParagraph.StartTime.TotalMilliseconds >= sp.StartTime.TotalMilliseconds && addParagraph.StartTime.TotalMilliseconds < sp.EndTime.TotalMilliseconds) || (addParagraph.EndTime.TotalMilliseconds > sp.StartTime.TotalMilliseconds && addParagraph.EndTime.TotalMilliseconds <= sp.EndTime.TotalMilliseconds) || (addParagraph.StartTime.TotalMilliseconds < sp.StartTime.TotalMilliseconds && addParagraph.EndTime.TotalMilliseconds > sp.EndTime.TotalMilliseconds))
                     {
                         //DONT copy multiplematch paragraph into existing subtitle
                         //There already is a subtitlepagraph at this position
@@ -258,12 +262,40 @@ namespace SubSync
                 {
                     //copy multiplematch paragraph into original subtitle
                     subtitle.InsertParagraphInCorrectTimeOrder(addParagraph);
-                    //MessageBox.Show("added extra subtitle");
+
+                    //increase linenumber of nomatch list since a new line was added
+                    //if the new line was added before the linenumber of nomatch, increase nomatchlinenumber
+                    for (int i = 0; i < nomatch.Count; i++)
+                    {
+                        int nomatchlinenumber = nomatch[i];
+                        if (nomatchlinenumber > m.Linenumber)
+                        {
+                            nomatch[i]++;
+                        }
+                    }
                 }
+            }
+            */
+            
+            //remove subtitle paragraphs for which no match was found
+            Subtitle nomatchsubtitle = new Subtitle();
+            if (nomatch.Count > 0)
+            {
+                for (int i = nomatch.Count - 1; i >= 0; i--)
+                {
+                    //save the deleted lines to a seperate subtitle file
+                    nomatchsubtitle.InsertParagraphInCorrectTimeOrder(subtitle.Paragraphs[nomatch[i]]);
+                    //remove the line from the original subtitle
+                    subtitle.Paragraphs.RemoveAt(nomatch[i]);
+                }
+                //save the nomatches subs to a file
+                string allText2 = nomatchsubtitle.ToText(format);
+                TextWriter file2 = new StreamWriter(SubtitlePath.Text.Insert(SubtitlePath.Text.Length - 4, "_no_match"), false, encoding);
+                file2.Write(allText2);
+                file2.Close();
             }
 
 
-            var testit = 1337;
             //save the corrected subs
             subtitle.Renumber(1);
             string allText = subtitle.ToText(format);
@@ -332,11 +364,15 @@ namespace SubSync
         {
             progressBar1.Dispatcher.BeginInvoke((Action)delegate
             {
-                progressBar1.Value = 0;
+                findmatches();
+                //delete wav file
+                if (File.Exists(VideoToSyncFilePath.Text + ".ffproxy.wav"))
+                {
+                    File.Delete(VideoToSyncFilePath.Text + ".ffproxy.wav");
+                }
                 //enable button after processing
                 Synchronize.IsEnabled = true;
-                //find matches
-                findmatches();
+                progressBar1.Value = 0;
             });
         }
     }
