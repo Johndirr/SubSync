@@ -370,6 +370,10 @@ namespace SubSync
                 {
                     File.Delete(VideoToSyncFilePath.Text + ".ffproxy.wav");
                 }
+                if (File.Exists(ReferenceFilePath.Text + ".ffproxy.wav"))
+                {
+                    File.Delete(ReferenceFilePath.Text + ".ffproxy.wav");
+                }
                 //enable button after processing
                 Synchronize.IsEnabled = true;
                 progressBar1.Value = 0;
