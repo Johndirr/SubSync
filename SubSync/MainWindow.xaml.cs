@@ -34,8 +34,9 @@ namespace SubSync
     /// </summary>
     public partial class MainWindow : Window
     {
-        private FingerprintStore store;
-        private Profile profile;
+        public FingerprintStore store;
+        public Profile profile;
+        public Subtitle subtitle = new Subtitle();
 
 
         public MainWindow()
@@ -145,10 +146,10 @@ namespace SubSync
             public int Linenumber { get; set; }
         }
 
-        public void findmatches() //for testing
+        public void findmatches(string VideoToSyncFileName, string ReferenceFileName, string SubtitlePath) //for testing
         {
-            var VideoToSyncFileName = System.IO.Path.GetFileName(VideoToSyncFilePath.Text);
-            var ReferenceFileName = System.IO.Path.GetFileName(ReferenceFilePath.Text);
+            //var VideoToSyncFileName = System.IO.Path.GetFileName(VideoToSyncFilePath.Text);
+            //var ReferenceFileName = System.IO.Path.GetFileName(ReferenceFilePath.Text);
 
             List<Aurio.Matching.Match> matches = store.FindAllMatches();
             List<SimpleMatch> simplematches = new List<SimpleMatch>();
@@ -170,9 +171,9 @@ namespace SubSync
                 }
             }
 
-            Subtitle subtitle = new Subtitle();
+            //Subtitle subtitle = new Subtitle();
             Encoding encoding;
-            var format = subtitle.LoadSubtitle(SubtitlePath.Text, out encoding, null);
+            var format = subtitle.LoadSubtitle(SubtitlePath, out encoding, null);
 
             List<int> nomatch = new List<int>();
             List<MultipleMatch> multiplematch = new List<MultipleMatch>();
@@ -290,7 +291,7 @@ namespace SubSync
                 }
                 //save the nomatches subs to a file
                 string allText2 = nomatchsubtitle.ToText(format);
-                TextWriter file2 = new StreamWriter(SubtitlePath.Text.Insert(SubtitlePath.Text.Length - 4, "_no_match"), false, encoding);
+                TextWriter file2 = new StreamWriter(SubtitlePath.Insert(SubtitlePath.Length - 4, "_no_match"), false, encoding);
                 file2.Write(allText2);
                 file2.Close();
             }
@@ -299,12 +300,9 @@ namespace SubSync
             //save the corrected subs
             subtitle.Renumber(1);
             string allText = subtitle.ToText(format);
-            TextWriter file = new StreamWriter(SubtitlePath.Text.Insert(SubtitlePath.Text.Length - 4, "_sync"), false, encoding);
+            TextWriter file = new StreamWriter(SubtitlePath.Insert(SubtitlePath.Length - 4, "_sync"), false, encoding);
             file.Write(allText);
             file.Close();
-
-            //reload the subtitle for displaying
-            SubtitleGrid.ItemsSource = subtitle.Paragraphs;
         }
 
         private void Synchronize_Click(object sender, RoutedEventArgs e)
@@ -321,6 +319,10 @@ namespace SubSync
                 //store.FingerprintSize = ;
                 store.Threshold = 0.45f;
 
+                var VideoToSyncFileName = System.IO.Path.GetFileName(VideoToSyncFilePath.Text);
+                var ReferenceFileName = System.IO.Path.GetFileName(ReferenceFilePath.Text);
+                var SubtitlePathname = SubtitlePath.Text;
+                bool firsttaskfinished = false;
                 Task.Factory.StartNew(() => Parallel.ForEach<string>(FileNames, new ParallelOptions { MaxDegreeOfParallelism = Environment.ProcessorCount }, fileName =>
                 {
                     AudioTrack audioTrack = new AudioTrack(new FileInfo(fileName));
@@ -335,7 +337,15 @@ namespace SubSync
                     });
 
                     fpg.Generate();
+
+                    //use second task to find matches if first task is finished
+                    if (firsttaskfinished)
+                    {
+                        findmatches(VideoToSyncFileName, ReferenceFileName, SubtitlePathname);
+                    }
                     progressReporter.Finish();
+                    firsttaskfinished = true;
+
                 }))
                 .ContinueWith(task =>
                 { }, TaskScheduler.FromCurrentSynchronizationContext());
@@ -357,6 +367,10 @@ namespace SubSync
             progressBar1.Dispatcher.BeginInvoke((Action)delegate
             {
                 progressBar1.Value = e.Value;
+                if(progressBar1.Value == 100)
+                {
+                    progressBar1.IsIndeterminate = true;
+                }
             });
         }
 
@@ -364,7 +378,12 @@ namespace SubSync
         {
             progressBar1.Dispatcher.BeginInvoke((Action)delegate
             {
-                findmatches();
+                //reload the subtitle for displaying
+                SubtitleGrid.ItemsSource = subtitle.Paragraphs;
+                //enable button after processing
+                Synchronize.IsEnabled = true;
+                progressBar1.Value = 0;
+                progressBar1.IsIndeterminate = false;
                 //delete wav file
                 if (File.Exists(VideoToSyncFilePath.Text + ".ffproxy.wav"))
                 {
@@ -374,9 +393,7 @@ namespace SubSync
                 {
                     File.Delete(ReferenceFilePath.Text + ".ffproxy.wav");
                 }
-                //enable button after processing
-                Synchronize.IsEnabled = true;
-                progressBar1.Value = 0;
+                MessageBox.Show("Synchronizing done!", "", MessageBoxButton.OK, MessageBoxImage.Information);
             });
         }
     }
