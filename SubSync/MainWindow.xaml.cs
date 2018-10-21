@@ -153,7 +153,7 @@ namespace SubSync
 
             List<Aurio.Matching.Match> matches = store.FindAllMatches();
             List<SimpleMatch> simplematches = new List<SimpleMatch>();
-
+            List<TimeSpan> adjustmentlog = new List<TimeSpan>();
             //sort matches so that Track1.Name is always ReferenceFileName. save to SimpleMatchList
             foreach (var match in matches)
             {
@@ -211,10 +211,12 @@ namespace SubSync
                             multiplematch.Add(new MultipleMatch { Starttime = subtitle.Paragraphs[i].StartTime.TimeSpan + element, Linenumber = i });
                         }
                         subtitle.Paragraphs[i].Adjust(1, closestToSubtitleTime.TotalSeconds);
+                        adjustmentlog.Add(closestToSubtitleTime);
                     }
                     else //take first offset otherwise
                     {
                         subtitle.Paragraphs[i].Adjust(1, groupedsubmatches_avarage[0].TotalSeconds);
+                        adjustmentlog.Add(groupedsubmatches_avarage[0]);
                     }
 
                     //adjust time to 0:00:00.000 if adjusting resulted in a negative timestamp
@@ -303,6 +305,13 @@ namespace SubSync
             TextWriter file = new StreamWriter(SubtitlePath.Insert(SubtitlePath.Length - 4, "_sync"), false, encoding);
             file.Write(allText);
             file.Close();
+
+            //save adjustmentlog to log
+            string outdir = System.IO.Path.GetDirectoryName(SubtitlePath);
+            TextWriter fileal = new StreamWriter(outdir + "\\" + "adjustment.log");
+            foreach (TimeSpan ts in adjustmentlog)
+                fileal.WriteLine(ts.ToString());
+            fileal.Close();
         }
 
         private void Synchronize_Click(object sender, RoutedEventArgs e)
