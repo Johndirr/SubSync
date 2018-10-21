@@ -232,6 +232,7 @@ namespace SubSync
                 {
                     //add linenumber to nomatch-list
                     nomatch.Add(i);
+                    adjustmentlog.Add(TimeSpan.FromSeconds(0));
                 }
             }
 
