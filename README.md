@@ -17,7 +17,6 @@ SubSync uses the following programs and libraries:
 
 # Known bugs / To Do
 - Copy lines for which more than one match was found even though the other matches aren't in the original video
-- Start processing the subtitles in an extra process
 - Change name of outputfile to name of the videofile it syncs to
 
 # Shortcomings
